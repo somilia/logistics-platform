@@ -19,7 +19,7 @@
 struct sembuf sem_oper_P;  /* Operation P */
 struct sembuf sem_oper_V;  /* Operation V */
 
-typedef enum {NORD, SUD, OUEST, EST} Destination;
+typedef enum {NORD, SUD, OUEST, EST, ETRANGER} Destination;
 
 typedef struct Marchandise {
     pid_t id;
@@ -105,6 +105,7 @@ int creer_peniche(int portique)
     if(pid != 0)
         return pid;
 
+    
 
     exit(0);
 }
@@ -137,7 +138,7 @@ Marchandise creer_marchandise()
     if(pid != 0)
         Marchandise march;
 
-        march.destination = nombre_aleatoire(0, 3);
+        march.destination = nombre_aleatoire(0, 4);
         march.id = pid;
         return march;
 
