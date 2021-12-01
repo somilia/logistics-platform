@@ -6,7 +6,25 @@
 #include <sys/ipc.h> 
 #include <sys/sem.h> 
 
+#define nbr_cargo 10
+#define nbr_wagon 10
+#define nbr_camion 10
+
+
+#define IFLAGS (SEMPERM | IPC_CREAT)
+#define SKEY   (key_t) IPC_PRIVATE
+#define SEMPERM 0600                  /* Permission */
+#define MUTEX 0
+
+struct sembuf sem_oper_P;  /* Operation P */
+struct sembuf sem_oper_V;  /* Operation V */
+
 typedef enum {NORD, SUD, OUEST, EST} Destination;
+
+typedef struct Marchandise {
+    pid_t id;
+    Destination destination;
+} Marchandise;
 
 int nombre_aleatoire(int min, int max) {
   return(min + (rand() % (max - min)));
@@ -48,7 +66,7 @@ void V(int semnum)
     semop(semid,&sem_oper_V,1);
 }
 
-int creer_portique() //tube ?
+int creer_portique(Marchandise marchandise) 
 {
     int pid = fork();
     if(pid != 0)
@@ -58,17 +76,7 @@ int creer_portique() //tube ?
 
     while(1) {
         
-        int requete[2];
-        read(tube_dechargement, &bateau, 3 * sizeof(int));
-        printf("Déchargement du bateau %d en cours\n", peniche[0]);
-        write(transport, marchandise, sizeof(int));
-        sigsuspend(&old_mask);
-        printf("Déchargement du bateau %d terminé\n", peniche[0]);
-        kill(peniche[0], SIGUSR2);
-
-
-
-        switch (destination)
+        switch (marchandise.destination)
         {
         case 0:
             
@@ -85,75 +93,82 @@ int creer_portique() //tube ?
         default:
             print("ca cherche les problemes");
             break;
-        }
 
-        requete[1] = -requete[1];
-        printf("Bateau %d s'amarre au quai de chargement\n", getpid());
-        write(portique, requete, 3 * sizeof(int));
-        sigsuspend(&old_mask);
-        printf("Peniche %d s'en va après avoir chargé %d marchandises\n", getpid(), marchandise);
         }
 
     }
 }
 
-void creer_peniche(int portique)
+int creer_peniche(int portique)
 {
     int pid = fork();
     if(pid != 0)
-        return;
+        return pid;
 
-    int stock = nombre_aleatoire(1, 10);
-    printf("Stock de a peniche: %d\n", stock);
-
-
-    int marchandise = nombre_aleatoire(1, 5);
-    Destination destination = nombre_aleatoire(0, 3);
-    int requete[3] = { getpid(), marchandise, destination};
-
-    if(destination == NORD) 
-    {
-        requete[1] = -requete[1];
-        printf("Peniche %d s'amarre au quai de chargement\n", getpid());
-        write(portique, requete, 3 * sizeof(int));
-        sigsuspend(&old_mask);
-        printf("Peniche %d s'en va après avoir chargé %d marchandises\n", getpid(), marchandise);
-    }
-    else 
-    {
-        printf("Peniche %d s'amarre au quai de déchargement\n", getpid());
-        write(portique, requete, 3 * sizeof(int));
-        sigsuspend(&old_mask);
-        printf("Peniche %d s'en va après avoir déchargé %d caisses\n", getpid(), marchandise);
-    }
-
-  exit(0);
-}
-
-void creer_train(Destination destination) //2 trains unidirectionnels
-{
-    int pid = fork();
-    if(pid != 0)
-        return;
-
-    int wagon = nombre_aleatoire(1, 10);
-    printf("Nombre de wagon: %d\n", wagon);  
-
-    if(destination == NORD) 
-    {
-        requete[1] = -requete[1];
-        printf("Bateau %d s'amarre au quai de chargement\n", getpid());
-        write(portique, requete, 3 * sizeof(int));
-        sigsuspend(&old_mask);
-        printf("Peniche %d s'en va après avoir chargé %d marchandises\n", getpid(), marchandise);
-    }
-    else 
-    {
-        printf("Bateau %d s'amarre au quai de déchargement\n", getpid());
-        write(portique, requete, 3 * sizeof(int));
-        sigsuspend(&old_mask);
-        printf("Bateau %d s'en va après avoir déchargé %d caisses\n", getpid(), marchandise);
-    }
 
     exit(0);
+}
+
+int creer_camion(int portique)
+{
+    int pid = fork();
+    if(pid != 0)
+        return pid;
+
+
+    exit(0);
+}
+
+
+
+int creer_train(Destination destination) //2 trains unidirectionnels
+{
+    int pid = fork();
+    if(pid != 0)
+        return pid;
+ 
+
+    exit(0);
+}
+
+Marchandise creer_marchandise()
+{
+    pid_t pid = fork();
+    if(pid != 0)
+        Marchandise march;
+
+        march.destination = nombre_aleatoire(0, 3);
+        march.id = pid;
+        return march;
+
+}
+
+int main(int argc, char *argv[])
+{
+    if(argc != 2)
+    {
+        fprintf(stderr, "Usage: %s <nb_ship>\n", argv[0]);
+        return 1;
+    }
+
+    int n = nb_marchandise = atoi(argv[1]);
+
+    srand(time(NULL));
+    for(int i = 0; i < nbr_camion; i++) {
+        sleep(nombre_aleatoire(0, 5));
+        int camion = creer_camion(portique);
+    }
+    for(int i = 0; i < 2; i++) {
+        sleep(nombre_aleatoire(0, 5));
+        int peniche = creer_peniche(portique);
+        int portique = creer_portique();
+    }
+
+
+    for(int i = 0; i < n; i++) {
+        sleep(nombre_aleatoire(0, 5));
+        creer_marchandise();
+    }
+  
+
 }
