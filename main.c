@@ -14,17 +14,17 @@
 
 
 typedef enum {NORD, SUD, OUEST, EST, ETRANGER} Destination;
-
-typedef struct Marchandise {
+//Definition de la struture Conteneur
+typedef struct Container {
     pid_t id;
     Destination destination;
-} Marchandise;
+} Container;
 
 int nombre_aleatoire(int min, int max) {
   return(min + (rand() % (max - min)));
 }
 
-int creer_portique(Marchandise marchandise) 
+int creer_portique(Container container) 
 {
     int pid = fork();
     if(pid != 0)
@@ -34,7 +34,7 @@ int creer_portique(Marchandise marchandise)
 
     while(1) {
         
-        switch (marchandise.destination)
+        switch (container.destination)
         {
         case 0:
             
@@ -57,7 +57,7 @@ int creer_portique(Marchandise marchandise)
     }
 }
 
-int creer_bateau(int portique)
+int creer_peniche(int portique)
 {
     int pid = fork();
     if(pid != 0)
@@ -88,16 +88,16 @@ int creer_train(Destination destination) //2 trains unidirectionnels
     exit(0);
 }
 
-Marchandise creer_marchandise()
+Container creer_Container()
 {
     pid_t pid = fork();
-    if(pid != 0)
-        Marchandise march;
-        
-        march.destination = nombre_aleatoire(0, 4);
-        march.id = pid;
-        return march;
+    if(pid != 0){
+        Container container;
 
+        container.destination = nombre_aleatoire(0, 4);
+        container.id = pid;
+        return container;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -107,24 +107,27 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Usage: %s <nb_ship>\n", argv[0]);
         return 1;
     }
-
-    int n = nb_marchandise = atoi(argv[1]);
+    int nb_Container;
+    int n = nb_Container = atoi(argv[1]);
+    int portique, peniche, camion; //train
 
     srand(time(NULL));
-    for(int i = 0; i < nbr_camion; i++) {
-        sleep(nombre_aleatoire(0, 5));
-        int camion = creer_camion(portique);
-    }
+    
     for(int i = 0; i < 2; i++) {
         sleep(nombre_aleatoire(0, 5));
-        int bateau = creer_bateau(portique);
-        int portique = creer_portique();
+        Container container = creer_Container();
+        portique = creer_portique(container);
+        peniche = creer_peniche(portique);
     }
 
+    for(int i = 0; i < nbr_camion; i++) {
+        sleep(nombre_aleatoire(0, 5));
+        camion = creer_camion(portique);
+    }
 
     for(int i = 0; i < n; i++) {
         sleep(nombre_aleatoire(0, 5));
-        creer_marchandise();
+        creer_Container();
     }
   
 
