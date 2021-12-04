@@ -1,23 +1,17 @@
 #include <stdio.h>
-#include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/ipc.h> 
-#include <sys/sem.h> 
+
+//headers
+#include "headers/semaphore.h"
 
 #define nbr_cargo 10
 #define nbr_wagon 10
 #define nbr_camion 10
 
-
-#define IFLAGS (SEMPERM | IPC_CREAT)
-#define SKEY   (key_t) IPC_PRIVATE
-#define SEMPERM 0600                  /* Permission */
-#define MUTEX 0
-
-struct sembuf sem_oper_P;  /* Operation P */
-struct sembuf sem_oper_V;  /* Operation V */
 
 typedef enum {NORD, SUD, OUEST, EST, ETRANGER} Destination;
 
@@ -28,42 +22,6 @@ typedef struct Marchandise {
 
 int nombre_aleatoire(int min, int max) {
   return(min + (rand() % (max - min)));
-}
-
-int initsem(key_t semkey) 
-{
-    
-	int status = 0;		
-	int semid_init;
-   	union semun {
-		int val; 		//valeur d'initialisation SETVAL
-		struct semid_ds *buffer;
-		ushort * array;	//tableau pour GETALL, SETALL
-	} ctl_arg;
-    if ((semid_init = semget(semkey, 2, IFLAGS)) > 0) {
-		
-	    	ushort array[2] = {, };
-	    	ctl_arg.array = array;
-	    	status = semctl(semid_init, 0, SETALL, ctl_arg);
-    }
-   if (semid_init == -1 || status == -1) { 
-	perror("Erreur initsem");
-	return (-1);
-    } else return (semid_init);
-}
-void P(int semnum)
-{
-    sem_oper_P.sem_num = semnum;
-    sem_oper_P.sem_op  = -1 ;
-    sem_oper_P.sem_flg = 0 ;
-    semop(semid,&sem_oper_P,1);
-}
-void V(int semnum)
-{
-    sem_oper_V.sem_num = semnum;
-    sem_oper_V.sem_op  = 1 ;
-    sem_oper_V.sem_flg  = 0 ;
-    semop(semid,&sem_oper_V,1);
 }
 
 int creer_portique(Marchandise marchandise) 
@@ -91,7 +49,7 @@ int creer_portique(Marchandise marchandise)
             
             break;
         default:
-            print("ca cherche les problemes");
+            printf("ca cherche les problemes");
             break;
 
         }
@@ -99,7 +57,7 @@ int creer_portique(Marchandise marchandise)
     }
 }
 
-int creer_peniche(int portique)
+int creer_bateau(int portique)
 {
     int pid = fork();
     if(pid != 0)
@@ -120,8 +78,6 @@ int creer_camion(int portique)
     exit(0);
 }
 
-
-
 int creer_train(Destination destination) //2 trains unidirectionnels
 {
     int pid = fork();
@@ -137,7 +93,7 @@ Marchandise creer_marchandise()
     pid_t pid = fork();
     if(pid != 0)
         Marchandise march;
-
+        
         march.destination = nombre_aleatoire(0, 4);
         march.id = pid;
         return march;
@@ -161,7 +117,7 @@ int main(int argc, char *argv[])
     }
     for(int i = 0; i < 2; i++) {
         sleep(nombre_aleatoire(0, 5));
-        int peniche = creer_peniche(portique);
+        int bateau = creer_bateau(portique);
         int portique = creer_portique();
     }
 
