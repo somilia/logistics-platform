@@ -92,8 +92,12 @@ int creer_camion(int portique)
     if(pid != 0)
         return pid;
 
-    /*Destination destination = nombre_aleatoire(0, 3);
-    int nb_container = nombre_aleatoire(0, 1);*/
+    Destination destination = nombre_aleatoire(0, 3);
+    int nb_container = nombre_aleatoire(0, 1);
+
+    Container container_peniche[CAPACITE_PENICHE];
+    remplir_transport(container_peniche, destination, nb_container);
+
 
     exit(0);
 }
@@ -104,6 +108,11 @@ int creer_train(Destination destination) //2 trains unidirectionnels
     if(pid != 0)
         return pid;
 
+    Destination destination = nombre_aleatoire(0, 3);
+    int nb_container = nombre_aleatoire(0, CAPACITE_TRAIN);
+
+    Container container_peniche[CAPACITE_PENICHE];
+    remplir_transport(container_peniche, destination, nb_container);
 
     exit(0);
 }
