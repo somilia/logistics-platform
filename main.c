@@ -14,6 +14,7 @@
 
 
 pthread_t tid_peniche[NB_PENICHE+1];
+static pthread_mutex_t printf_mutex;
 
 typedef enum {NORD, SUD, OUEST, EST} Destination;
 //Definition de la struture Conteneur
@@ -61,15 +62,18 @@ void * fonc_peniche(int i){
     //Remplissage de la péniche
     Destination destinationPeniche = nombre_aleatoire(0, 4);
     int nb_container = nombre_aleatoire(0, CAPACITE_PENICHE);
-
     Container container_peniche[CAPACITE_PENICHE];
-    remplir_transport(container_peniche, destinationPeniche, nb_container);
-    
-    printf("\n\nPeniche id %d \t Destination: %d \t Nb de contenair %d",tid_peniche[i],destinationPeniche,nb_container);
 
-    for(int n=0;i<nb_container;i++){
-        printf("\n\t(%d) Container id:%d\t destination:%d",tid_peniche[i],container_peniche[n].id,container_peniche[n].destination);
+    
+    remplir_transport(container_peniche, destinationPeniche, nb_container);
+    pthread_mutex_lock(&printf_mutex);
+
+    printf("\n\n* Peniche id %u \t Destination: %u \t Nb de contenair %u", tid_peniche[i], destinationPeniche, nb_container);
+
+    for(int n=0;n<nb_container;n++){
+        printf("\n\t=> (%u) Container id:%u\t destination:%u\n", tid_peniche[i], container_peniche[n].id, container_peniche[n].destination);
     }
+    pthread_mutex_unlock(&printf_mutex);
 
     //While
 }
@@ -142,21 +146,16 @@ int creer_portique(Container container)
 }
 */
 int main() {
+    srand(time(NULL));
 	int i;	
 
-	//initialise le mutex pointé par mutex, 0=paramètre par défault
-	//pthread_mutex_init(&mutex,0);
-	
-	//initialise la variable condition cond
-	//pthread_cond_init(&attendre,0);
-	//pthread_cond_init(&dormir,0);
-
 	//creation des threads clients
-
+    
+    
 	for(i=0;i<NB_PENICHE;i++){
 	    pthread_create(tid_peniche+i,0,(void *(*)())fonc_peniche,(void*)i);
 	}
-
+    
 	//attend la fin de toutes les threads clients
 	for(i=0;i<NB_PENICHE;i++){
 		pthread_join(tid_peniche[i],NULL);
@@ -165,6 +164,6 @@ int main() {
 	//On libère les ressources
 	//pthread_mutex_destroy(&mutex);
 	//pthread_cond_destroy(&attendre);  
-	
+	printf("\n");
 	exit(0);
 }
