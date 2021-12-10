@@ -28,22 +28,23 @@ void * fonc_peniche(int i);
 int nombre_aleatoire(int min, int max);
 //
 
-void remplir_transport(Container transport[], Destination dest, int nb_container) {
+void remplir_transport(Container transport[], Destination destinationTransport, int nb_container) {
     for (int i=0; i < nb_container; i++) {
-        transport[i] = create_container(dest);
+        transport[i] = create_container(destinationTransport);
     }
 }
 
-Container create_container(Destination dest){
+Container create_container(Destination destinationTransport){
     pid_t pid = fork();
-    if (pid != 0){
+    if (pid == 0){
         Container cont;
         do{
             cont.destination = nombre_aleatoire(0, 4);
-        } while(cont.destination != dest);
-        cont.id = pid;
+        } while(cont.destination == destinationTransport);
+        cont.id = getpid();
         return cont;
     }
+    exit(0);
 }
 
 int nombre_aleatoire(int min, int max) {
@@ -58,20 +59,23 @@ void creer_peniche()
 void * fonc_peniche(int i){
     
     //Remplissage de la péniche
-    Destination destination = nombre_aleatoire(0, 3);
+    Destination destinationPeniche = nombre_aleatoire(0, 4);
     int nb_container = nombre_aleatoire(0, CAPACITE_PENICHE);
 
     Container container_peniche[CAPACITE_PENICHE];
-    remplir_transport(container_peniche, destination, nb_container);
+    remplir_transport(container_peniche, destinationPeniche, nb_container);
     
-    printf("\nPeniche id %d",tid_peniche[i]);
+    printf("\n\nPeniche id %d \t Destination: %d \t Nb de contenair %d",tid_peniche[i],destinationPeniche,nb_container);
 
-    for(int i=0;i<CAPACITE_PENICHE;i++){
-        printf("\nid:%d\t destination:%d",container_peniche[i].id,container_peniche[i].destination);
+    for(int n=0;i<nb_container;i++){
+        printf("\n\t(%d) Container id:%d\t destination:%d",tid_peniche[i],container_peniche[n].id,container_peniche[n].destination);
     }
 
     //While
 }
+
+
+
 /*
 int creer_camion(int portique)
 {
@@ -137,7 +141,6 @@ int creer_portique(Container container)
     }
 }
 */
-
 int main() {
 	int i;	
 
