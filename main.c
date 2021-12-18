@@ -25,7 +25,7 @@
 #define CAPACITE_TRAIN 3
 #define CAPACITE_CAMION 1
 
-#define DELAI_ATTENTE 3 //Temps en secondes qu'attend un transport au port avant de repartir
+#define DELAI_ATTENTE 4 //Temps en secondes qu'attend un transport au port avant de repartir
 
 //--------------pthread -------------------------------
 pthread_t tid_portique[2];
@@ -210,12 +210,13 @@ void * fonc_transport(int arg[]){
     //--------------Fin du remplissage du transport------------
     
     pthread_mutex_unlock(&mutex_creation_transport);
-    
+    printf("\n%c %d arrive au P1", transportString[transport.typeTransport][0] ,transport.id);
     //--- Traitement du transport -----------
+    printf("\n%c %d attend au P1", transportString[transport.typeTransport][0] ,transport.id);
     for(int temps=0; temps<DELAI_ATTENTE; temps++)
     {
+        printf(".");
         sleep(1);
-        temps++;
     }
 
     //--- Fin avec P1 donc transfert vers P2 --- 
@@ -235,27 +236,29 @@ void * fonc_transport(int arg[]){
     }
     transfer_vers_P2(transport);
     nb_transport_portique[P1][transport.typeTransport]--;
+    printf("\n%c %d va au P2", transportString[transport.typeTransport][0] ,transport.id);
+    sleep(1);
     pthread_mutex_unlock(&mutex_nb_transport);
 
     //--- Traitement du transport -----------
+    printf("\n%c %d attend au P2", transportString[transport.typeTransport][0] ,transport.id);
     for(int temps=0; temps<DELAI_ATTENTE; temps++)
     {
+        printf(".");
         sleep(1);
-        temps++;
     }
 
 
     //--- Affichage du contenu du transport ------------------------
-    pthread_mutex_lock(&printf_mutex);
+    /*pthread_mutex_lock(&printf_mutex);
     sleep(1);
 
     //--- Fin d'affichage du contenu du transport ------------------------
-    pthread_mutex_unlock(&printf_mutex);
-
-   
+    pthread_mutex_unlock(&printf_mutex);*/
 
     pthread_mutex_lock(&mutex_nb_transport);
     nb_transport_portique[P2][transport.typeTransport]--;
+    printf("\n%c %d quitte le port", transportString[transport.typeTransport][0] ,transport.id);
     pthread_mutex_unlock(&mutex_nb_transport);
     pthread_cond_signal(&cond_nb_transport);
 }
@@ -279,7 +282,8 @@ void * fonc_portique(int portique){
                     }                
                     sleep(1);
                 }
-                pthread_mutex_unlock(&mutex_nb_transport);                    
+                pthread_mutex_unlock(&mutex_nb_transport); 
+                sleep(1);                   
             }
         } else {
         //Portique 2
@@ -347,6 +351,7 @@ int main() {
     pthread_mutex_init(&mutex_nb_transport,0);
     
     pthread_cond_init(&cond_nb_transport, NULL);
+
     //Création des threads portiques
     for(i=0;i<2;i++){
         pthread_create(tid_portique,0, (void *(*)())(fonc_portique),(void*)i);   
