@@ -2,3 +2,4 @@
 *.json
 *.json
 *.[oa]
+.DS_Store
