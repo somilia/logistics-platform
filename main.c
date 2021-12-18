@@ -42,7 +42,7 @@ pthread_t tid_camion[NB_CAMION+1];
 
 //-------------- Mutex-------------------------------
 pthread_mutex_t printf_mutex;
-pthread_mutex_t mutex_creation_transport;
+pthread_mutex_t mutex_creation_transport[3];
 pthread_mutex_t mutex_nb_transport;
 pthread_mutex_t mutex_portique1;
 
@@ -214,7 +214,8 @@ void * fonc_transport(int arg[]){
     remplir_transport(transport);
     //--------------Fin du remplissage du transport------------
     
-    pthread_mutex_unlock(&mutex_creation_transport);
+    pthread_mutex_unlock(&mutex_creation_transport[transport.typeTransport]);
+
     pthread_mutex_lock(&printf_mutex);
     printf("\n ->%c (%c) %d arrive au P1", transportString[transport.typeTransport][0],'A'+transport.compteurGlobal%2 ,transport.id);
     pthread_mutex_unlock(&printf_mutex);
@@ -222,6 +223,7 @@ void * fonc_transport(int arg[]){
 
     //--- Traitement du transport -----------
     pthread_cond_signal(&cond_portique1);
+
     pthread_mutex_lock(&printf_mutex);
     printf("\n   %c (%c) %d attend au P1", transportString[transport.typeTransport][0],'A'+transport.compteurGlobal%2 ,transport.id);
     pthread_mutex_unlock(&printf_mutex);
@@ -255,9 +257,11 @@ void * fonc_transport(int arg[]){
     pthread_mutex_lock(&printf_mutex);
     printf("\n >>%c (%c) %d va au P2>>", transportString[transport.typeTransport][0],'A'+transport.compteurGlobal%2 ,transport.id);
     pthread_mutex_unlock(&printf_mutex);
+
     usleep(100);
     pthread_mutex_unlock(&mutex_nb_transport);
-
+    usleep(100);
+    
     //--- Traitement du transport -----------
     pthread_mutex_lock(&printf_mutex);
     printf("\n   %c (%c) %d attend au P2", transportString[transport.typeTransport][0],'A'+transport.compteurGlobal%2 ,transport.id);
@@ -305,12 +309,11 @@ void * fonc_portique(int portique){
                 pthread_cond_wait(&cond_portique1,&mutex_portique1);
                 pthread_mutex_lock(&mutex_nb_transport);
 
-                if(nb_transport_portique[P1][PENICHE] !=0 && nb_transport_portique[P1][TRAIN]!=0)
+                if(nb_transport_portique[P1][PENICHE] !=0 || nb_transport_portique[P1][TRAIN]!=0){
                     
                     pthread_mutex_lock(&printf_mutex);
                     printf("\nPortique %d:",portique+1);
                     for(int typeT = 0;typeT<3;typeT++){
-                    {
                         afficherTransport(portique,typeT);
                     }  
                     pthread_mutex_unlock(&printf_mutex);              
@@ -395,8 +398,11 @@ int main() {
 	int i=1;	
 
     //-- Initialisation des mutex --
+    for (i = 0; i < 3; i++) {
+        pthread_mutex_init(&mutex_creation_transport[i],0);
+    }
+    
     pthread_mutex_init(&printf_mutex,0);
-    pthread_mutex_init(&mutex_creation_transport,0);
     pthread_mutex_init(&mutex_nb_transport,0);
     pthread_mutex_init(&mutex_portique1,0); //Possibilite de creer un tableau avec les deux portiques
 
@@ -408,16 +414,15 @@ int main() {
         pthread_create(tid_portique,0, (void *(*)())(fonc_portique),(void*)i);   
 	}
    
-   
 	//-- Création des threads transport --
 	for(i=0;i<NB_PENICHE;i++){
-        pthread_mutex_lock(&mutex_creation_transport);
+        pthread_mutex_lock(&mutex_creation_transport[PENICHE]);
         int arg[2]={i,PENICHE};
 	    pthread_create(tid_peniche+i,0, (void *(*)())(fonc_transport),(void*)arg);
 	}
 
     for(i=0;i<NB_TRAIN;i++){
-        pthread_mutex_lock(&mutex_creation_transport);
+        pthread_mutex_lock(&mutex_creation_transport[TRAIN]);
         int arg[2]={i,TRAIN};
 	    pthread_create(tid_train+i,0,(void *(*)())(fonc_transport),(void*)arg);
 	}
@@ -440,8 +445,10 @@ int main() {
 	}*/
 
 	//-- On libère les ressources -- 
+    for (i = 0; i < 3; i++) {
+        pthread_mutex_destroy(&mutex_creation_transport[i]);
+    }
     pthread_mutex_destroy(&printf_mutex);
-    pthread_mutex_destroy(&mutex_creation_transport);
     pthread_mutex_destroy(&mutex_nb_transport);
     pthread_mutex_destroy(&mutex_portique1);
 
