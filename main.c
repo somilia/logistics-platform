@@ -194,7 +194,7 @@ void * fonc_transport(int arg[]){
 
     }
     nb_transport_portique[P1][transport.typeTransport]++;
-    pthread_mutex_unlock(&mutex_nb_transport);
+    
     //--------------Remplissage du transport------------
     switch(transport.typeTransport){
         case PENICHE:
@@ -210,10 +210,11 @@ void * fonc_transport(int arg[]){
             camion[P1][transport.compteurGlobal%2] = transport;
             break;
     }
-    //printf("\t(%c-%c-%d) ", transportString[transport.typeTransport][0],'A'+transport.compteurGlobal%2, transport.id);
+
     remplir_transport(transport);
-    //--------------Fin du remplissage du transport------------
-    
+    pthread_mutex_unlock(&mutex_nb_transport);
+    //--------------Fin de création et remplissage du transport------------
+
     pthread_mutex_unlock(&mutex_creation_transport[transport.typeTransport]);
 
     pthread_mutex_lock(&printf_mutex);
@@ -261,7 +262,7 @@ void * fonc_transport(int arg[]){
     usleep(100);
     pthread_mutex_unlock(&mutex_nb_transport);
     usleep(100);
-    
+
     //--- Traitement du transport -----------
     pthread_mutex_lock(&printf_mutex);
     printf("\n   %c (%c) %d attend au P2", transportString[transport.typeTransport][0],'A'+transport.compteurGlobal%2 ,transport.id);
@@ -427,7 +428,6 @@ int main() {
 	    pthread_create(tid_train+i,0,(void *(*)())(fonc_transport),(void*)arg);
 	}
     
-    
 	//-- On attend la fin de toutes les threads -- 
 	for(i=0;i<NB_PENICHE;i++){
 		pthread_join(tid_peniche[i],NULL);
@@ -440,9 +440,9 @@ int main() {
 		pthread_join(tid_camion[i],NULL);
 	}
 
-    /*for(i=0;i<2;i++){
+    for(i=0;i<2;i++){
         pthread_join(tid_portique[i],NULL); 
-	}*/
+	}
 
 	//-- On libère les ressources -- 
     for (i = 0; i < 3; i++) {
@@ -454,9 +454,7 @@ int main() {
 
     pthread_cond_destroy(&cond_nb_transport);
     pthread_cond_destroy(&cond_portique1);
-    
-	//pthread_mutex_destroy(&mutex);
-	//pthread_cond_destroy(&attendre);  
-	printf("\nFin de tous les threads");
+     
+	printf("\nFin de tous les threads, tous les transports sont partis");
 	exit(0);
 }
