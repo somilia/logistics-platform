@@ -205,14 +205,15 @@ void * fonc_transport(int arg[]){
             camion[P1][transport.compteurGlobal%2] = transport;
             break;
     }
-    printf("\t(%c-%c-%d) ", transportString[transport.typeTransport][0],'A'+transport.compteurGlobal%2, transport.id);
+    //printf("\t(%c-%c-%d) ", transportString[transport.typeTransport][0],'A'+transport.compteurGlobal%2, transport.id);
     remplir_transport(transport);
     //--------------Fin du remplissage du transport------------
     
     pthread_mutex_unlock(&mutex_creation_transport);
-    printf("\n%c %d arrive au P1", transportString[transport.typeTransport][0] ,transport.id);
+    printf("\n ->%c (%c) %d arrive au P1", transportString[transport.typeTransport][0],'A'+transport.compteurGlobal%2 ,transport.id);
+    
     //--- Traitement du transport -----------
-    printf("\n%c %d attend au P1", transportString[transport.typeTransport][0] ,transport.id);
+    printf("\n   %c (%c) %d attend au P1", transportString[transport.typeTransport][0],'A'+transport.compteurGlobal%2 ,transport.id);
     for(int temps=0; temps<DELAI_ATTENTE; temps++)
     {
         printf(".");
@@ -236,12 +237,12 @@ void * fonc_transport(int arg[]){
     }
     transfer_vers_P2(transport);
     nb_transport_portique[P1][transport.typeTransport]--;
-    printf("\n%c %d va au P2", transportString[transport.typeTransport][0] ,transport.id);
+    printf("\n >>%c (%c) %d va au P2>>", transportString[transport.typeTransport][0],'A'+transport.compteurGlobal%2 ,transport.id);
     sleep(1);
     pthread_mutex_unlock(&mutex_nb_transport);
 
     //--- Traitement du transport -----------
-    printf("\n%c %d attend au P2", transportString[transport.typeTransport][0] ,transport.id);
+    printf("\n   %c (%c) %d attend au P2", transportString[transport.typeTransport][0],'A'+transport.compteurGlobal%2 ,transport.id);
     for(int temps=0; temps<DELAI_ATTENTE; temps++)
     {
         printf(".");
@@ -258,7 +259,7 @@ void * fonc_transport(int arg[]){
 
     pthread_mutex_lock(&mutex_nb_transport);
     nb_transport_portique[P2][transport.typeTransport]--;
-    printf("\n%c %d quitte le port", transportString[transport.typeTransport][0] ,transport.id);
+    printf("\n * %c (%c) %d quitte le port *", transportString[transport.typeTransport][0],'A'+transport.compteurGlobal%2 ,transport.id);
     pthread_mutex_unlock(&mutex_nb_transport);
     pthread_cond_signal(&cond_nb_transport);
 }
