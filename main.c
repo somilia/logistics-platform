@@ -169,7 +169,7 @@ void * fonc_container(int i){
 }
 
 void * fonc_transport(int arg[]){
-    //Creation du transport
+    //-- Création du transport --
     Transport transport;
     transport.destination = nombre_aleatoire(0, 4);
     transport.typeTransport = arg[1]; //typeTransport;
@@ -177,11 +177,10 @@ void * fonc_transport(int arg[]){
     transport.position = P1;
     transport.compteurGlobal = arg[0];
 
-    //On attend s'il ya de la place au portique 1
     
-    /*MUTEX COND*/
+    //-- On attend qu'il ya de la place au portique 1 --
+    
     pthread_mutex_lock(&mutex_nb_transport);
-    
     if(transport.typeTransport == CAMION){  //Peniche ou Train
         while (nb_transport_portique[P1][transport.typeTransport] >=4 ){ 
             //Pas de place au portique 1
@@ -263,6 +262,7 @@ void * fonc_transport(int arg[]){
     pthread_mutex_lock(&printf_mutex);
     printf("\n   %c (%c) %d attend au P2", transportString[transport.typeTransport][0],'A'+transport.compteurGlobal%2 ,transport.id);
     pthread_mutex_unlock(&printf_mutex);
+
     for(int temps=0; temps<DELAI_ATTENTE; temps++)
     {
         //printf(".");
@@ -279,11 +279,14 @@ void * fonc_transport(int arg[]){
 
     pthread_mutex_lock(&mutex_nb_transport);
     nb_transport_portique[P2][transport.typeTransport]--;
+    pthread_mutex_unlock(&mutex_nb_transport);
+
     pthread_mutex_lock(&printf_mutex);
     printf("\n * %c (%c) %d quitte le port *", transportString[transport.typeTransport][0],'A'+transport.compteurGlobal%2 ,transport.id);
     pthread_mutex_unlock(&printf_mutex);
-    pthread_mutex_unlock(&mutex_nb_transport);
+
     pthread_cond_signal(&cond_nb_transport);
+    usleep(200);
 }
 
 void * fonc_portique(int portique){
@@ -326,42 +329,56 @@ void * fonc_portique(int portique){
 
 void transfer_vers_P2(Transport * transport){
     transport->position = P2;
+    
+    switch(transport->typeTransport){
+        case PENICHE:
+            peniche[transport->compteurGlobal%2].position = P2;
+            break;
+        
+        case TRAIN:
+            train[transport->compteurGlobal%2].position = P2;
+            break;
+
+        case CAMION:
+            //camion[transport->compteurGlobal%2].position = P2;
+            break;
+    }
 }
 
 void * fonc_superviseur(int i){
 }
 
 void afficherTransport(int portique, int typeT){
-    if (nb_transport_portique[P1][typeT]!=0){
-        int ab;
-        if(peniche[A].position == P1) //=0
-        {
-            ab = A; //A=0
-        } 
-        else {
-            ab = B; //B=1
-        }                
-        
-        printf("\n\t• Peniche %c: id:%d - destination:%d - nb contenair:%d",ab+'A', peniche[ab].id,peniche[ab].destination,peniche[ab].nb_container);
-        if (peniche[ab].nb_container>0)
-        {
-            for (int i = 0; i < peniche[ab].nb_container; i++){
-                printf("\n\t\t> Contenair: %d - destination: %d",container_peniche[ab][i].id,container_peniche[ab][i].destination);
-            }
-        }
-        
-        if(train[A].position == P1) //=0
-        {
-            ab = A; //A=0
-        } else {
-            ab = B; //B=1
-        } 
-        printf("\n\t• Train %c: id:%d - destination:%d - nb contenair:%d",ab+'A', train[ab].id,train[ab].destination,train[ab].nb_container);
-        if (train[ab].nb_container>0)
-        {
-            for (int i = 0; i < train[ab].nb_container; i++){
-                printf("\n\t\t> Contenair: %d - destination: %d",container_train[ab][i].id,container_train[ab][i].destination);
-            }
+    if (nb_transport_portique[P1][typeT]>0){
+        int ab=A;
+        switch (typeT){
+            case PENICHE:
+                if(peniche[A].position == P2){
+                    ab = B; //A=0
+                }              
+                
+                printf("\n\t• Peniche %c: id:%d - destination:%d - nb contenair:%d",ab+'A', peniche[ab].id,peniche[ab].destination,peniche[ab].nb_container);
+                if (peniche[ab].nb_container>0){
+                    for (int i = 0; i < peniche[ab].nb_container; i++){
+                        printf("\n\t\t> Contenair: %d - destination: %d",container_peniche[ab][i].id,container_peniche[ab][i].destination);
+                    }
+                }
+                break;
+            
+            case TRAIN:
+                if(train[A].position == P2){
+                    ab = B; //A=0
+                } 
+                printf("\n\t• Train %c: id:%d - destination:%d - nb contenair:%d",ab+'A', train[ab].id,train[ab].destination,train[ab].nb_container);
+                if (train[ab].nb_container>0){
+                    for (int i = 0; i < train[ab].nb_container; i++){
+                        printf("\n\t\t> Contenair: %d - destination: %d",container_train[ab][i].id,container_train[ab][i].destination);
+                    }
+                }
+                break;
+
+            case CAMION:
+                break;   
         }
     }
 }
