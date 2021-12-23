@@ -47,6 +47,8 @@ pthread_mutex_t mutex_nb_transport;
 pthread_mutex_t mutex_portique1;
 pthread_mutex_t mutex_nb_transport_termine;
 
+pthread_mutex_t mutex_arg;
+
 pthread_cond_t cond_nb_transport[3];
 pthread_cond_t cond_portique1;
 
@@ -197,9 +199,10 @@ void * fonc_transport(int arg[]){
     transport.position = P1;
     transport.compteurGlobal = arg[0];
     transport.lettreABCD = transport.compteurGlobal%2;
-
+    pthread_mutex_unlock(&mutex_arg);
     if(transport.typeTransport == CAMION){
         transport.lettreABCD = transport.destination;
+        //printf("\ncamion cree\n");
     }
 
     int portique_camion = P1;
@@ -207,19 +210,22 @@ void * fonc_transport(int arg[]){
         portique_camion = P2;
     }
     //-- On attend qu'il ya de la place au portique 1 --
-    //pthread_mutex_lock(&mutex_creation_transport[transport.typeTransport]); 
+    pthread_mutex_lock(&mutex_creation_transport[transport.typeTransport]); 
     pthread_mutex_lock(&mutex_nb_transport); 
+
     if(transport.typeTransport == CAMION){  //Camion
-        if(portique_camion == P1){
-            while (nb_transport_portique[P1][transport.typeTransport+transport.lettreABCD] >= 2){ //vérifier la place en fonction de la zone au portique
+        if(transport.destination == NORD || transport.destination==SUD){
+            while (nb_transport_portique[P1][transport.typeTransport+transport.lettreABCD%2] >= 1){ //vérifier la place en fonction de la zone au portique
                 //Pas de place au portique 1 pour ce camion
                 pthread_cond_wait(&cond_nb_transport[transport.typeTransport], &mutex_nb_transport);
             }
-                nb_transport_portique[P1][transport.typeTransport+transport.lettreABCD] = 1;
+                nb_transport_portique[P1][transport.typeTransport+transport.lettreABCD%2] = 1;
         } else {
             // On fait rien si le camion est un camion-portique-2
         }   
-    } else { //Cas pour Peniche ou Train 
+    } 
+    
+    else { //Peniche ou Train 
         while (nb_transport_portique[P1][transport.typeTransport] >= 1 ){ 
             //Pas de place au portique 1 pour ce transport
             pthread_cond_wait(&cond_nb_transport[transport.typeTransport], &mutex_nb_transport);
@@ -276,19 +282,21 @@ void * fonc_transport(int arg[]){
     pthread_mutex_lock(&mutex_nb_transport);
     
     if(transport.typeTransport == CAMION){  //Camion
-        if(portique_camion == P2){
+        if(transport.destination == EST || transport.destination==OUEST){
             while (nb_transport_portique[P2][transport.lettreABCD] >= 1){ //vérifier la place en fonction de la zone au portique
                 //Pas de place au portique 2 pour ce camion
                 pthread_cond_wait(&cond_nb_transport[transport.typeTransport], &mutex_nb_transport);
             }
                 nb_transport_portique[P2][transport.lettreABCD] = 1;
-                nb_transport_portique[P1][transport.lettreABCD] = 0;
         } else {
             // On fait rien si le camion est un camion-portique-1
+            nb_transport_portique[P1][CAMION+transport.lettreABCD] = 0;
         }   
     } else { //Cas pour Peniche ou Train 
         while (nb_transport_portique[P2][transport.typeTransport] >= 1 ){ 
             //Pas de place au portique 2 pour ce transport
+        //printf(" P:%d T:%d C(A):%d C(B):%d",nb_transport_portique[P1][0],nb_transport_portique[P1][1],nb_transport_portique[P1][2],nb_transport_portique[P1][3]);
+
             pthread_cond_wait(&cond_nb_transport[transport.typeTransport], &mutex_nb_transport);
         }
         nb_transport_portique[P2][transport.typeTransport] = 1;
@@ -297,6 +305,7 @@ void * fonc_transport(int arg[]){
     
     transfert_vers_P2(&transport); //On transfère pas de camion, le camion va directement au portique lié à sa destination
   
+        //printf(" P:%d T:%d C(A):%d C(B):%d",nb_transport_portique[P1][0],nb_transport_portique[P1][1],nb_transport_portique[P1][2],nb_transport_portique[P1][3]);
     
     usleep(100);
     pthread_mutex_unlock(&mutex_nb_transport);
@@ -319,8 +328,10 @@ void * fonc_transport(int arg[]){
         if(transport.typeTransport != CAMION){
             nb_transport_portique[P2][transport.typeTransport] = 0;
         } else {
-            nb_transport_portique[P2][transport.lettre] = 0;
+            nb_transport_portique[P2][transport.destination] = 0;
         }
+        //printf("\n\n\t\tP:%d T:%d C(A):%d C(B):%d\n\n",nb_transport_portique[P1][0],nb_transport_portique[P1][1],nb_transport_portique[P1][2],nb_transport_portique[P1][3]);
+
         pthread_mutex_unlock(&mutex_nb_transport);
     }
 
@@ -362,8 +373,8 @@ void * fonc_portique(int portique){
                 if(nb_transport_portique[P1][PENICHE] !=0 || nb_transport_portique[P1][TRAIN]!=0){
                     
                     pthread_mutex_lock(&printf_mutex);
-                    printf("\nPortique %d:",portique+1);
-                    for(int typeT = 0;typeT<3;typeT++){
+                    printf("\n=>Portique %d:",portique+1);
+                    for(int typeT = 0;typeT<4;typeT++){
                         afficherTransport(portique,typeT);
                     }  
                     pthread_mutex_unlock(&printf_mutex);              
@@ -381,15 +392,17 @@ void * fonc_portique(int portique){
 }
 
 void transfert_vers_P2(Transport * transport){
-    transport->position = P2;
+   
     
     switch(transport->typeTransport){
-        case PENICHE:
+        case PENICHE: 
+            transport->position = P2;
             peniche[transport->lettreABCD].position = P2;
             
             break;
         
         case TRAIN:
+            transport->position = P2;
             train[transport->lettreABCD].position = P2;
             
             break;
@@ -509,6 +522,7 @@ void * fonc_superviseur(int i){
 void afficherTransport(int portique, int typeT){
     if (nb_transport_portique[P1][typeT]>0){
         int ab=A;
+        //printf(" P:%d T:%d C(A):%d C(B):%d",nb_transport_portique[P1][0],nb_transport_portique[P1][1],nb_transport_portique[P1][2],nb_transport_portique[P1][3]);
         switch (typeT){
             case PENICHE:
                 if(peniche[A].position == P2){
@@ -535,7 +549,16 @@ void afficherTransport(int portique, int typeT){
                 }
                 break;
 
-            case CAMION:
+            default:
+                
+                printf("\n\t• Camion %c: id:%d - destination:%d - nb contenair:%d",typeT%2+'A', camion[typeT%2].id,camion[typeT%2].destination,camion[typeT%2].nb_container);
+                if (camion[typeT%2].nb_container>0){
+                    for (int i = 0; i < camion[typeT%2].nb_container; i++){
+                        printf("\n\t\t> Contenair: %d - destination: %d",container_camion[typeT%2][i].id,container_camion[typeT%2][i].destination);
+                    }
+                }
+                
+            
                 break;   
         }
     }
@@ -561,6 +584,7 @@ int main() {
     pthread_mutex_init(&mutex_nb_transport,0);
     pthread_mutex_init(&mutex_nb_transport_termine,0);
     pthread_mutex_init(&mutex_portique1,0); //Possibilite de creer un tableau avec les deux portiques
+    pthread_mutex_init(&mutex_arg,0);
 
     for (i = 0; i < 3; i++) {
         pthread_cond_init(&cond_nb_transport[i], NULL);
@@ -574,19 +598,22 @@ int main() {
    
 	//-- Création des threads transport --
 	for(i=0;i<NB_PENICHE;i++){
-        pthread_mutex_lock(&mutex_creation_transport[PENICHE]);
+        //pthread_mutex_lock(&mutex_creation_transport[PENICHE]);
+        pthread_mutex_lock(&mutex_arg);
         int arg[2]={i,PENICHE};
 	    pthread_create(tid_peniche+i,0, (void *(*)())(fonc_transport),(void*)arg);
 	}
 
     for(i=0;i<NB_TRAIN;i++){
-        pthread_mutex_lock(&mutex_creation_transport[TRAIN]);
+        //pthread_mutex_lock(&mutex_creation_transport[TRAIN]);
+        pthread_mutex_lock(&mutex_arg);
         int arg[2]={i,TRAIN};
 	    pthread_create(tid_train+i,0,(void *(*)())(fonc_transport),(void*)arg);
 	}
 
-    for(i=0;i<CAMION;i++){
-        pthread_mutex_lock(&mutex_creation_transport[CAMION]);
+    for(i=0;i<NB_CAMION;i++){
+        //thread_mutex_lock(&mutex_creation_transport[CAMION]);
+        pthread_mutex_lock(&mutex_arg);
         int arg[2]={i,CAMION};
 	    pthread_create(tid_camion+i,0,(void *(*)())(fonc_transport),(void*)arg);
 	}
@@ -614,6 +641,8 @@ int main() {
     pthread_mutex_destroy(&printf_mutex);
     pthread_mutex_destroy(&mutex_portique1);
     pthread_mutex_destroy(&mutex_nb_transport_termine);
+
+    pthread_mutex_destroy(&mutex_arg);
 
     for (i = 0; i < 3; i++) {
         pthread_cond_destroy(&cond_nb_transport[i]);
