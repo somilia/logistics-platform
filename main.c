@@ -113,7 +113,7 @@ const int portiquePlace[3] = {1,1,2};
 Transport penicheB;
 Transport trainA;
 Transport trainB;*/
-int nb_transport_portique[2][3] = {0};//portique[P1 pu P2][PENICHE TRAIN OU CAMION]
+int nb_transport_portique[2][4] = {0};//portique[P1 pu P2][PENICHE TRAIN OU CAMION]
 
 Transport peniche[2];       //peniche[A ou B]
 Transport train[2];         //train[A ou B]
@@ -195,11 +195,12 @@ void * fonc_transport(int arg[]){
     Transport transport;
     transport.typeTransport = arg[1]; //typeTransport;
     transport.destination = nombre_aleatoire(0, 4);
-    transport.nb_container = nombre_aleatoire(0, Capacite[transport.typeTransport]);
+    transport.nb_container = nombre_aleatoire(0, Capacite[transport.typeTransport]+1);
     transport.position = P1;
     transport.compteurGlobal = arg[0];
     transport.lettreABCD = transport.compteurGlobal%2;
     pthread_mutex_unlock(&mutex_arg);
+
     if(transport.typeTransport == CAMION){
         transport.lettreABCD = transport.destination;
         //printf("\ncamion cree\n");
@@ -208,13 +209,15 @@ void * fonc_transport(int arg[]){
     int portique_camion = P1;
     if(transport.typeTransport == CAMION && transport.destination >=2){ //camion destination = EST ou OUEST
         portique_camion = P2;
+        transport.position = P2;
     }
+
     //-- On attend qu'il ya de la place au portique 1 --
     pthread_mutex_lock(&mutex_creation_transport[transport.typeTransport]); 
     pthread_mutex_lock(&mutex_nb_transport); 
 
     if(transport.typeTransport == CAMION){  //Camion
-        if(transport.destination == NORD || transport.destination==SUD){
+        if(transport.destination == NORD || transport.destination == SUD){
             while (nb_transport_portique[P1][transport.typeTransport+transport.lettreABCD%2] >= 1){ //vérifier la place en fonction de la zone au portique
                 //Pas de place au portique 1 pour ce camion
                 pthread_cond_wait(&cond_nb_transport[transport.typeTransport], &mutex_nb_transport);
