@@ -836,8 +836,7 @@ int main() {
 
     //-- Création des threads portiques --
     for(int i=0;i<2;i++){
-        int *iptr = &i;
-        pthread_create(tid_portique,0, (void *(*)())(fonc_portique),(void*)iptr);   
+        pthread_create(tid_portique,0, (void *(*)())(fonc_portique),(void*)i);   
 	}
    
 	//-- Création des threads transport --
