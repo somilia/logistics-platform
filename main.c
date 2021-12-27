@@ -48,7 +48,6 @@ pthread_mutex_t mutex_portique[2];
 pthread_mutex_t mutex_nb_transport_termine;
 
 pthread_mutex_t mutex_transport[3][4];
-
 pthread_mutex_t mutex_container[3][4];
 
 pthread_mutex_t mutex_arg;
@@ -129,6 +128,7 @@ Transport camion[4];     //camion[portique][A B C ou D]
 Container container_peniche[2][CAPACITE_PENICHE]; 
 Container container_train[2][CAPACITE_TRAIN];
 Container container_camion[4][CAPACITE_CAMION];
+
 /*
 Container container_camionP1[2][CAPACITE_CAMION];
 Container container_camionP2[2][CAPACITE_CAMION];
@@ -278,7 +278,7 @@ void * fonc_transport(int arg[]){
             camion[transport.lettreABCD] = transport;
             break;
     }
-
+    
     remplir_transport(transport); //rempli les contenairs du transport
     pthread_mutex_unlock(&mutex_nb_transport);
     //--------------Fin de création et remplissage du transport------------
@@ -394,11 +394,11 @@ void * fonc_portique(int portique){
         if(portique == P1){
             
             while(1){
-                pthread_mutex_lock(&mutex_portique1);
-                pthread_cond_wait(&cond_portique1,&mutex_portique1);
+                pthread_mutex_lock(&mutex_portique[portique]);
+                pthread_cond_wait(&cond_portique1,&mutex_portique[portique]);
                 pthread_mutex_lock(&mutex_nb_transport);
 
-                if(nb_transport_portique[P1][PENICHE] !=0 || nb_transport_portique[P1][TRAIN]!=0){
+                if(nb_transport_portique[portique][PENICHE] !=0 || nb_transport_portique[portique][TRAIN]!=0){
                     
                     pthread_mutex_lock(&printf_mutex);
                     printf("\n=>Portique %d:",portique+1);
@@ -409,7 +409,7 @@ void * fonc_portique(int portique){
                     sleep(1);
                 } 
                 pthread_mutex_unlock(&mutex_nb_transport); 
-                pthread_mutex_unlock(&mutex_portique1);
+                pthread_mutex_unlock(&mutex_portique[portique]);
                 usleep(200);                
             }
         } else {
@@ -496,14 +496,18 @@ void transfert_container(Container container, Transport origine, Transport desti
     destination.nb_container++;
 
     switch(destination.typeTransport){
+        int i = 0;
+        
         case PENICHE:
-            for (int i=0; i<CAPACITE_PENICHE; i++){
-                if(container_peniche[destination.lettreABCD][i].id == contNULL.id){
-                    container_peniche[destination.lettreABCD][i]=tmp;
-                    peniche[destination.lettreABCD].nb_container++;
-                }
-            }
+            while (container_peniche[destination.lettreABCD][i].id != contNULL.id && i<CAPACITE_PENICHE);
+            {
+                i++;
+            } 
+            container_peniche[destination.lettreABCD][i]=tmp;
+            peniche[destination.lettreABCD].nb_container++;
+            
             break;
+            
         case TRAIN:
             for (int i=0; i<CAPACITE_TRAIN; i++) {
                 if(container_train[destination.lettreABCD][i].id == contNULL.id){
@@ -524,10 +528,12 @@ void transfert_container(Container container, Transport origine, Transport desti
     }
     pthread_mutex_unlock(&mutex_portique[origine.position]);
 
+    pthread_mutex_lock(&printf_mutex);
     int p = origine.position+1;
     printf("\n\nLe portique %d transporte le container %d ",p,container.id);
     printf("du %s (%d) ",transportString[origine.typeTransport],origine.id);
     printf("vers %s (%d)\n",transportString[destination.typeTransport],destination.id);
+    pthread_mutex_unlock(&printf_mutex);
 }
 
 //Permet de connaitre lequel du transport A ou B est à un portique donné
@@ -575,73 +581,105 @@ void dechargement(Transport transport){
     int lettre = transport.lettreABCD; 
     int portique = transport.position;
 
+    pthread_mutex_lock(&mutex_container[typeT][lettre]); //on lit les containers de la péniche
     switch (typeT){
         case PENICHE:
             if (peniche[lettre].nb_container>0){
                 for (int i = 0; i < peniche[lettre].nb_container; i++){
-                    //pthread_mutex_lock(&mutex_container[][]); //on lit les containers de la péniche
                     if (container_peniche[lettre][i].destination != peniche[lettre].destination && container_peniche[lettre][i].id != 0) { 
                         //Si le container possède une destination différente de la péniche
                         //bloquage du camion
-                       // pthread_mutex_lock(&mutex_transport[]); //on bloque le camion au portique
-                       // pthread_mutex_unlock(&mutex_container[]); //on lit les containers
-                        if ((container_peniche[lettre][i].destination == camion[PositionToTransport(portique, CAMION)].destination)) {
+                        pthread_mutex_lock(&mutex_transport[CAMION][PositionToTransport(portique, CAMION)]); //on bloque le camion au portique
+                        pthread_mutex_lock(&mutex_container[CAMION][PositionToTransport(portique, CAMION)]); //on lit les containers
+                        if (container_peniche[lettre][i].destination == camion[PositionToTransport(portique, CAMION)].destination
+                            && camion[PositionToTransport(portique, CAMION)].nb_container < Capacite[CAMION]
+                        ) {
                             transfert_container(container_peniche[PositionToTransport(portique, PENICHE)][i], peniche[lettre], camion[PositionToTransport(portique, CAMION)]);
                         }
-                        if ((container_peniche[lettre][i].destination == camion[PositionToTransport(portique, CAMION)+1].destination)) {
+                        pthread_mutex_unlock(&mutex_transport[CAMION][PositionToTransport(portique, CAMION)]);
+                        pthread_mutex_unlock(&mutex_container[CAMION][PositionToTransport(portique, CAMION)]);
+
+
+                        pthread_mutex_lock(&mutex_container[CAMION][PositionToTransport(portique, CAMION)+1]);
+                        pthread_mutex_lock(&mutex_transport[CAMION][PositionToTransport(portique, CAMION)+1]);
+                        if (container_peniche[lettre][i].destination == camion[PositionToTransport(portique, CAMION)+1].destination
+                            && camion[PositionToTransport(portique, CAMION)+1].nb_container < Capacite[CAMION]) {
                             transfert_container(container_peniche[PositionToTransport(portique, PENICHE)][i], peniche[lettre], camion[PositionToTransport(portique, CAMION)+1]);
                         }
-                       // pthread_mutex_unlock(&mutex_container[]);
-                       // pthread_mutex_unlock(&mutex_transport[]);
+                        pthread_mutex_unlock(&mutex_transport[CAMION][PositionToTransport(portique, CAMION)]+1);
+                        pthread_mutex_unlock(&mutex_container[CAMION][PositionToTransport(portique, CAMION)+1]);
                         //débloquage du camion
                         
-                        if ((container_peniche[lettre][i].destination == train[PositionToTransport(portique, TRAIN)].destination)) {
+                        pthread_mutex_lock(&mutex_transport[TRAIN][PositionToTransport(portique, TRAIN)]);
+                        pthread_mutex_lock(&mutex_container[TRAIN][PositionToTransport(portique, TRAIN)]);
+                        if (container_peniche[lettre][i].destination == train[PositionToTransport(portique, TRAIN)].destination
+                            && train[PositionToTransport(portique, TRAIN)].nb_container < Capacite[TRAIN]) {
                             transfert_container(container_peniche[lettre][i], peniche[lettre], train[PositionToTransport(portique, TRAIN)]);
-                        }   
+                        }
+                        pthread_mutex_unlock(&mutex_transport[TRAIN][PositionToTransport(portique, TRAIN)]);
+                        pthread_mutex_unlock(&mutex_container[TRAIN][PositionToTransport(portique, TRAIN)]);
+                        
                     }
-                    pthread_mutex_unlock(&container);
                 }
             }
+            
             break;  
         case TRAIN:
             for(int i=0; i<CAPACITE_TRAIN; i++){
                 if (container_train[lettre][i].destination != train[lettre].destination && container_train[lettre][i].id != 0) { 
                     //Si le container possède une destination différente du train
-                    if ((container_train[lettre][i].destination == camion[PositionToTransport(portique, CAMION)].destination)) {
+                    pthread_mutex_lock(&mutex_transport[CAMION][PositionToTransport(portique, CAMION)]); //on bloque le camion au portique
+                    pthread_mutex_lock(&mutex_container[CAMION][PositionToTransport(portique, CAMION)]);
+                    if (container_train[lettre][i].destination == camion[PositionToTransport(portique, CAMION)].destination && camion[PositionToTransport(portique, CAMION)].nb_container < Capacite[CAMION]) {
                         //Si le container possède une destination égale à celle d'un camion du portique 1
                         transfert_container(container_train[PositionToTransport(portique, TRAIN)][i], train[PositionToTransport(portique, TRAIN)], camion[PositionToTransport(portique, CAMION)]);
                     }
-                    if ((container_train[lettre][i].destination == camion[PositionToTransport(portique, CAMION)].destination) && (portique == P2)) {
+                    pthread_mutex_unlock(&mutex_transport[CAMION][PositionToTransport(portique, CAMION)]);
+                    pthread_mutex_unlock(&mutex_container[CAMION][PositionToTransport(portique, CAMION)]);
+
+                    pthread_mutex_lock(&mutex_container[CAMION][PositionToTransport(portique, CAMION)+1]);
+                    pthread_mutex_lock(&mutex_transport[CAMION][PositionToTransport(portique, CAMION)+1]);
+                    if (container_train[lettre][i].destination == camion[PositionToTransport(portique, CAMION)].destination) && camion[PositionToTransport(portique, CAMION)+1].nb_container < Capacite[CAMION]) {
                         //Si le container possède une destination égale à celle d'un camion du portique 2
                         transfert_container(container_train[PositionToTransport(portique, TRAIN)][i], train[PositionToTransport(portique, TRAIN)], camion[PositionToTransport(portique, CAMION)]);
                     }
-                    if ((container_train[lettre][i].destination == peniche[PositionToTransport(portique, PENICHE)].destination)) {
+                    pthread_mutex_unlock(&mutex_transport[CAMION][PositionToTransport(portique, CAMION)]+1);
+                    pthread_mutex_unlock(&mutex_container[CAMION][PositionToTransport(portique, CAMION)+1]);
+                    
+                    pthread_mutex_lock(&mutex_transport[PENICHE][PositionToTransport(portique, PENICHE)]); 
+                    pthread_mutex_lock(&mutex_container[PENICHE][PositionToTransport(portique, PENICHE)]);
+                    if (container_train[lettre][i].destination == peniche[PositionToTransport(portique, PENICHE)].destination && peniche[PositionToTransport(portique, PENICHE)].nb_container < Capacite[PENICHE]) {
                         transfert_container(container_train[lettre][i], train[lettre], peniche[PositionToTransport(portique, PENICHE)]);
                     }
+                    pthread_mutex_unlock(&mutex_transport[PENICHE][PositionToTransport(portique, PENICHE)]); 
+                    pthread_mutex_unlock(&mutex_container[PENICHE][PositionToTransport(portique, PENICHE)]);
                 }
             }
             break;
         default:
             for(int i=0; i<CAPACITE_CAMION; i++){
                 if (container_camion[lettre]->destination != camion[lettre].destination && container_camion[lettre][i].id != 0){
-                    if (container_camion[lettre]->destination == peniche[PositionToTransport(portique, PENICHE)].destination) {
+                    if (container_camion[lettre]->destination == peniche[PositionToTransport(portique, PENICHE)].destination && peniche[PositionToTransport(portique, PENICHE)].nb_container < Capacite[PENICHE]) {
                         //Si le container possède une destination égale à celle d'une péniche
                         transfert_container(container_camion[lettre][i], camion[lettre], peniche[PositionToTransport(portique, PENICHE)]);
                     }
-                    if (container_camion[lettre]->destination == train[lettre].destination) {
+                    if (container_camion[lettre]->destination == train[lettre].destination && train[PositionToTransport(portique, TRAIN)].nb_container < Capacite[TRAIN]) {
                         //Si le container possède une destination égale à celle d'
                         transfert_container(container_camion[lettre][i], camion[lettre], train[PositionToTransport(portique, PENICHE)]);
                     }
-                    //if(camion[lettre]=)
-                    if (container_camion[lettre]->destination == camion[lettre+1].destination) {
+                    int camion_oppose = lettre+1;
+                    if(lettre=B || lettre = D){ camion_oppose = lettre-1};
+                    if (container_camion[lettre]->destination == camion[camion_oppose].destination && camion[camion_oppose].nb_container < Capacite[CAMION]) {
                         //Si le container possède une destination égale à celle d'
-                        transfert_container(container_camion[lettre][i], camion[lettre], camion[PositionToTransport(portique, PENICHE)]);
+                        transfert_container(container_camion[lettre][i], camion[lettre], camion[camion_oppose]);
                     }
                 }  
              }    
             break;   
         
     }
+
+    pthread_mutex_unlock(&mutex_container[typeT][lettre]);
     
 }  
 
@@ -711,6 +749,8 @@ int main() {
         pthread_mutex_init(&mutex_creation_transport[i],0);
         for(int j=0;j<4;j++){
             pthread_mutex_init(&mutex_dechargement[i][j],0);
+            pthread_mutex_init(&mutex_transport[i][j],0);
+            pthread_mutex_init(&mutex_container[i][j],0);
         }    
     }
     
@@ -787,6 +827,13 @@ int main() {
         pthread_cond_destroy(&cond_nb_transport[i]);
     }
 
+    for (int i = 0; i < 3; i++) {
+            for(int j=0;j<4;j++){
+                pthread_mutex_destroy(&mutex_dechargement[i][j]);
+                pthread_mutex_destroy(&mutex_transport[i][j]);
+                pthread_mutex_destroy(&mutex_container[i][j]);
+            }    
+    }
     //pthread_cond_destroy(&cond_nb_transport);
     pthread_cond_destroy(&cond_portique1);
      
