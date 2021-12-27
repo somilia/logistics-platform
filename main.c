@@ -53,7 +53,7 @@ pthread_mutex_t mutex_container[3][4];
 pthread_mutex_t mutex_arg;
 
 pthread_cond_t cond_nb_transport[3];
-pthread_cond_t cond_portique1;
+pthread_cond_t cond_portique[2];
 
 pthread_mutex_t mutex_dechargement[3][4];
 //-------------- Enum -------------------------------
@@ -291,7 +291,7 @@ void * fonc_transport(int arg[]){
         usleep(100);
 
         //--- Traitement du transport -----------
-        pthread_cond_signal(&cond_portique1);
+        pthread_cond_signal(&cond_portique[transport.position]);
         dechargement(transport);
         //--- Effectuer les transferts de container --
         
@@ -342,6 +342,9 @@ void * fonc_transport(int arg[]){
 
     //--- Traitement du transport -----------
     if(!(transport.typeTransport == CAMION && portique_camion == P1)){
+        pthread_cond_signal(&cond_portique[transport.position]);
+        dechargement(transport);
+
         pthread_mutex_lock(&printf_mutex);
         printf("\n   %c (%c)(%c) %ld attend au P2", transportString[transport.typeTransport][0],'A'+transport.lettreABCD,destinationString[transport.destination][0] ,transport.id);
         pthread_mutex_unlock(&printf_mutex);
@@ -388,13 +391,12 @@ void * fonc_portique(int portique){
     else { //portique 2
         
     }*/
-    while (1)
-    {
-        if(portique == P1){
+    //while (1){
+        //if(portique == P1){
             
             while(1){
                 pthread_mutex_lock(&mutex_portique[portique]);
-                pthread_cond_wait(&cond_portique1,&mutex_portique[portique]);
+                pthread_cond_wait(&cond_portique[portique],&mutex_portique[portique]);
                 pthread_mutex_lock(&mutex_nb_transport);
 
                 if(nb_transport_portique[portique][PENICHE] !=0 
@@ -418,11 +420,11 @@ void * fonc_portique(int portique){
                 pthread_mutex_unlock(&mutex_portique[portique]);
                 usleep(200);                
             }
-        } else {
+        /*} else {
         //Portique 2
         //rien
-        }
-    }
+        }*/
+    //}
 }
 
 void transfert_vers_P2(Transport * transport){
@@ -750,12 +752,12 @@ void dechargement(Transport transport){
 }  
 
 void afficherTransport(int portique, int typeT){
-    if (nb_transport_portique[P1][typeT]>0){
+    if (nb_transport_portique[portique][typeT]>0){
         int ab=A;
         //printf(" P:%d T:%d C(A):%d C(B):%d",nb_transport_portique[P1][0],nb_transport_portique[P1][1],nb_transport_portique[P1][2],nb_transport_portique[P1][3]);
         switch (typeT){
             case PENICHE:
-                if(peniche[A].position == P2){
+                if(peniche[A].position != portique){
                     ab = B; //A=0
                 }              
                 
@@ -784,12 +786,14 @@ void afficherTransport(int portique, int typeT){
                 break;
 
             default:
-                
-                printf("\n\t• Camion %c: id:%ld - destination:%d - nb contenair:%d",typeT%2+'A', camion[typeT%2].id,camion[typeT%2].destination,camion[typeT%2].nb_container);
-                if(camion[typeT%2].nb_container>0){
+                if(portique == P1){
+                    typeT -= 2;
+                }
+                printf("\n\t• Camion %c: id:%ld - destination:%d - nb contenair:%d",typeT+'A', camion[typeT].id,camion[typeT].destination,camion[typeT].nb_container);
+                if(camion[typeT].nb_container>0){
                     for (int i = 0; i < Capacite[typeT]; i++){
-                        if(container_camion[typeT%2][i].id != 0 ){    
-                            printf("\n\t\t> Contenair: %ld - destination: %d",container_camion[typeT%2][i].id,container_camion[typeT%2][i].destination);
+                        if(container_camion[typeT][i].id != 0 ){    
+                            printf("\n\t\t> Contenair: %ld - destination: %d",container_camion[typeT][i].id,container_camion[typeT][i].destination);
                         }
                     }
                 }
@@ -832,8 +836,8 @@ int main() {
     for (int i = 0; i < 3; i++) {
         pthread_cond_init(&cond_nb_transport[i], NULL);
     }
-    pthread_cond_init(&cond_portique1, NULL);
-
+    pthread_cond_init(&cond_portique[P1], NULL);
+    pthread_cond_init(&cond_portique[P2], NULL);
     //-- Création des threads portiques --
     for(int i=0;i<2;i++){
         pthread_create(tid_portique,0, (void *(*)())(fonc_portique),(void*)i);   
@@ -901,8 +905,10 @@ int main() {
             }    
     }
     //pthread_cond_destroy(&cond_nb_transport);
-    pthread_cond_destroy(&cond_portique1);
-     
+    
+    pthread_cond_destroy(&cond_portique[P1]);
+    pthread_cond_destroy(&cond_portique[P2]);
+
 	printf("\nFin de tous les threads, tous les transports sont partis");
 	exit(0);
 }
