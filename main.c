@@ -45,6 +45,7 @@ pthread_mutex_t printf_mutex;
 pthread_mutex_t mutex_creation_transport[3];
 pthread_mutex_t mutex_nb_transport;
 pthread_mutex_t mutex_portique[2];
+pthread_mutex_t mutex_aff_portique[2];
 pthread_mutex_t mutex_nb_transport_termine;
 
 pthread_mutex_t mutex_transport[3][4];
@@ -411,13 +412,13 @@ void * fonc_portique(int portique){
     while(1){
         //pthread_mutex_unlock(&mutex_nb_transport_termine);
     
-        pthread_mutex_lock(&mutex_portique[portique]);
+        pthread_mutex_lock(&mutex_aff_portique[portique]);
             //printf("\n\t\t\t\t\t**LOCK0** %d", portique);
 
         //pthread_mutex_lock(&mutex_nb_transport_termine); 
         //if(nb_transport_total > (nb_transport_termine -1 )){
         //printf("\n\t\t\t\t\t**COND_WAIT** %d", portique);
-        pthread_cond_wait(&cond_portique[portique],&mutex_portique[portique]);
+        pthread_cond_wait(&cond_portique[portique],&mutex_aff_portique[portique]);
         //}
         //pthread_mutex_unlock(&mutex_nb_transport_termine); 
 
@@ -451,7 +452,7 @@ void * fonc_portique(int portique){
         pthread_mutex_unlock(&mutex_nb_transport); 
                 //printf("\n\t\t\t\t\t**UNLOCK1** %d", portique);
 
-        pthread_mutex_unlock(&mutex_portique[portique]);
+        pthread_mutex_unlock(&mutex_aff_portique[portique]);
                // printf("\n\t\t\t\t\t**UNLOCK0** %d", portique);
 
         usleep(200);   
@@ -802,7 +803,7 @@ int superviseur(int portique) {
 
 int main() {
     srand(time(NULL));
-    printf("\nBonjour !\n Bienvenue au port, aujourd'hui il y aura \n");
+    printf("\nBonjour !\nBienvenue au port, aujourd'hui il y aura \n");
     printf("\t• %d peniches", NB_PENICHE);
     printf("\t• %d trains", NB_TRAIN);
     printf("\t• %d camions \n\n", NB_CAMION);
@@ -815,9 +816,12 @@ int main() {
             pthread_mutex_init(&mutex_container[i][j],0);
         }    
     }
-    
-    pthread_mutex_init(&mutex_portique[P1],0); 
-    pthread_mutex_init(&mutex_portique[P2],0); 
+
+    for(int i = 0; i<2; i++){
+    pthread_mutex_init(&mutex_portique[i],0); 
+    pthread_mutex_init(&mutex_aff_portique[i],0); 
+    pthread_cond_init(&cond_portique[i], NULL);
+    }
     
     pthread_mutex_init(&printf_mutex,0);
     pthread_mutex_init(&mutex_nb_transport,0);
@@ -828,8 +832,7 @@ int main() {
     for (int i = 0; i < 3; i++) {
         pthread_cond_init(&cond_nb_transport[i], NULL);
     }
-    pthread_cond_init(&cond_portique[P1], NULL);
-    pthread_cond_init(&cond_portique[P2], NULL);
+    
 
 
     //-- Création des threads portiques --
@@ -881,9 +884,12 @@ int main() {
     }
     pthread_mutex_destroy(&printf_mutex);
     pthread_mutex_destroy(&mutex_nb_transport_termine);
-
-    pthread_mutex_destroy(&mutex_portique[P1]); 
-    pthread_mutex_destroy(&mutex_portique[P2]); 
+ 
+    for(int i = 0; i<2; i++){
+        pthread_mutex_destroy(&mutex_portique[i]); 
+        pthread_mutex_destroy(&mutex_aff_portique[i]); 
+        pthread_cond_destroy(&cond_portique[i]);
+    }
 
     pthread_mutex_destroy(&mutex_arg);
 
@@ -899,9 +905,7 @@ int main() {
             }    
     }
     //pthread_cond_destroy(&cond_nb_transport);
-    
-    pthread_cond_destroy(&cond_portique[P1]);
-    pthread_cond_destroy(&cond_portique[P2]);
+
 
 	printf("\nFin de tous les threads, tous les transports sont partis");
 	exit(0);
