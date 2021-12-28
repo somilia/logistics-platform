@@ -1,6 +1,7 @@
-
 *.json
 *.json
 *.[oa]
 .DS_Store
 *.o
+main
+.DS_Store
