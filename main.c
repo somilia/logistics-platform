@@ -308,6 +308,7 @@ void * fonc_transport(int arg[]){
             sleep(1);
         }*/
         sleep(DELAI_ATTENTE);
+        usleep(5000000);
     }
 
     //--- Fin avec P1 donc transfert vers P2 --- 
