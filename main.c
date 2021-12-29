@@ -276,7 +276,7 @@ void * fonc_transport(int arg[]){
             break;
     }
     
-    remplir_transport(transport); //On rempli les transport de contenairs
+    remplir_transport(transport); //On rempli les transports de contenairs
     afficher_container(transport); //On affiche les containers
 
     pthread_mutex_unlock(&mutex_transport[transport.typeTransport][transport.lettreABCD]);  
@@ -330,7 +330,7 @@ void * fonc_transport(int arg[]){
     
     usleep(100);
     pthread_mutex_unlock(&mutex_nb_transport);
-    pthread_cond_signal(&cond_nb_transport[transport.typeTransport]); //Le transport de type X vient de libérer une place, il réveille les transport X en attente...
+    pthread_cond_signal(&cond_nb_transport[transport.typeTransport]); //Le transport de type X vient de libérer une place, il réveille les transports X en attente...
     usleep(100);
 
     //--- Traitement du transport -----------
@@ -364,7 +364,7 @@ void * fonc_transport(int arg[]){
     
     pthread_mutex_unlock(&mutex_printf);
 
-    pthread_cond_signal(&cond_nb_transport[transport.typeTransport]); //Le transport de type X vient de libérer une place, il réveille les transport X en attente...
+    pthread_cond_signal(&cond_nb_transport[transport.typeTransport]); //Le transport de type X vient de libérer une place, il réveille les transports X en attente...
 }
 
 void transfert_vers_P2(Transport * transport){
@@ -518,7 +518,6 @@ int PositionToTransport(int portique, typeTransport type){
     return 2;
 }
 /* 
-
 Chaque transport arrivant au portique lance une fonction déchargement 
 Fonction déchargement:
     -   vérifie pour chaque contenair du transport dont la destination n'est pas la même que celle du transport, 
@@ -527,6 +526,7 @@ Fonction déchargement:
         on effectue un eventuel transfert et on le débloque après.
 
  */
+
 void dechargement(Transport transport){
     int typeT = transport.typeTransport;
     int lettre = transport.lettreABCD; 
@@ -830,6 +830,6 @@ int main() {
             }    
     }
 
-	printf("\n\n* Fin de tous les threads, tous les transports sont partis. *\n\n");
+	printf("\n\n\n* Fin de tous les threads, tous les transports sont partis. *\n\n");
 	exit(0);
 }
