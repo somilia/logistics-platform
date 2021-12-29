@@ -1,4 +1,3 @@
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
@@ -29,6 +28,13 @@
 #define CAPACITE_TRAIN 4
 #define CAPACITE_CAMION 1
 
+//-- Destinaiton --
+
+#define NORD 0
+#define SUD 1
+#define EST 2
+#define OUEST 3
+
 #define DELAI_ATTENTE 3000000 //Temps en microsecondes qu'attend un transport au port avant de repartir
 
 //--------------pthread -------------------------------
@@ -58,8 +64,8 @@ pthread_cond_t cond_portique[2];
 
 pthread_mutex_t mutex_dechargement[3][4];
 //-------------- Enum -------------------------------
-typedef enum {NORD, SUD, OUEST, EST} Destination;
-typedef enum {WPENICHE, wTRAIN, wCAMION} typeTransport;
+typedef enum {_NORD, _SUD, _OUEST, _EST} Destination;
+typedef enum {_PENICHE, _TRAIN, _CAMION} typeTransport;
 
 //-------------- ???? --------------------------------------
 int typeToCapacite(int typeTransport) { //a changer en variable global
@@ -98,8 +104,8 @@ int nombre_aleatoire(int min, int max);
 int typeToCapacite(int typeTransport);   
 int superviseur(int portique);    
 void afficherTransport(int portique, int typeT);
-void afficher_container(Transport transport);
 void transfert_vers_P2(Transport * transport); 
+void afficher_container(Transport transport);
 void transfert_container(Container container, Transport origine, Transport destination);
 void dechargement(Transport transport);
 
@@ -226,16 +232,16 @@ void * fonc_transport(int arg[]){
     transport.destination = nombre_aleatoire(0, 4);
 
     if(transport.typeTransport == PENICHE){
-        int dest[2] = {NORD, EST};
+        int dest1[2] = {NORD, EST};
         int index = nombre_aleatoire(0, 2);
-        transport.destination = dest[index];
+        transport.destination = dest1[index];
+    }
+    else if(transport.typeTransport == TRAIN){
+        int dest2[2] = {SUD, OUEST};
+        int index = nombre_aleatoire(0, 2);
+        transport.destination = dest2[index];
     }
 
-    if(transport.typeTransport == TRAIN){
-        int dest[2] = {SUD, OUEST};
-        int index = nombre_aleatoire(0, 2);
-        transport.destination = dest[index];
-    }
 
     transport.nb_container = nombre_aleatoire(0, Capacite[transport.typeTransport]+1);
     transport.position = P1;
@@ -906,3 +912,47 @@ int main() {
 	for(int i=0;i<NB_PENICHE;i++){
 		pthread_join(tid_peniche[i],NULL);
 	}	
+	for(int i=0;i<NB_TRAIN;i++){
+		pthread_join(tid_train[i],NULL);
+	}
+
+    for(int i=0;i<NB_CAMION;i++){
+		pthread_join(tid_camion[i],NULL);
+	}
+
+    for(int i=0;i<2;i++){
+        pthread_join(tid_portique[i],NULL); 
+	}
+
+	//-- On libère les ressources -- 
+    for (int i = 0; i < 3; i++) {
+        pthread_mutex_destroy(&mutex_creation_transport[i]);
+    }
+    pthread_mutex_destroy(&printf_mutex);
+    pthread_mutex_destroy(&mutex_nb_transport_termine);
+ 
+    for(int i = 0; i<2; i++){
+        pthread_mutex_destroy(&mutex_portique[i]); 
+        pthread_mutex_destroy(&mutex_aff_portique[i]); 
+        pthread_cond_destroy(&cond_portique[i]);
+    }
+
+    pthread_mutex_destroy(&mutex_arg);
+
+    for (int i = 0; i < 3; i++) {
+        pthread_cond_destroy(&cond_nb_transport[i]);
+    }
+
+    for (int i = 0; i < 3; i++) {
+            for(int j=0;j<4;j++){
+                pthread_mutex_destroy(&mutex_dechargement[i][j]);
+                pthread_mutex_destroy(&mutex_transport[i][j]);
+                pthread_mutex_destroy(&mutex_container[i][j]);
+            }    
+    }
+    //pthread_cond_destroy(&cond_nb_transport);
+
+
+	printf("\nFin de tous les threads, tous les transports sont partis");
+	exit(0);
+}
