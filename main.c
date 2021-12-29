@@ -210,14 +210,14 @@ void * fonc_transport(int arg[]){
     transport.destination = nombre_aleatoire(0, 4);
 
     if(transport.typeTransport == PENICHE){
-        int dest1[2] = {NORD, EST};
+        int dest[2] = {NORD, EST};
         int index = nombre_aleatoire(0, 2);
-        transport.destination = dest1[index];
+        transport.destination = dest[index];
     }
     else if(transport.typeTransport == TRAIN){
-        int dest2[2] = {SUD, OUEST};
+        int dest[2] = {SUD, OUEST};
         int index = nombre_aleatoire(0, 2);
-        transport.destination = dest2[index];
+        transport.destination = dest[index];
     }
 
 
