@@ -1,4 +1,4 @@
-#include "common.h"
+#include "transport.c"
 
 //Permet de connaitre lequel du transport A/B/C/ou D est à un portique donné
 int PositionToTransport(int portique, typeTransport type){ 

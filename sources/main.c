@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <unistd.h>
-#include "transport.c"
 #include "dechargement.c"
 
 void * fonc_transport(int arg[]){
